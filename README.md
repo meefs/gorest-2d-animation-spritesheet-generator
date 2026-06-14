@@ -1,4 +1,4 @@
-# Codex GoRest
+# Gorest 2D Animation Spritesheet Generator
 
 A local browser workspace for building side-scrolling 2D game scenes, importing or generating spritesheets, previewing animation clips, and organizing reusable scene assets.
 
@@ -43,8 +43,8 @@ Install Node.js 20 or newer from [nodejs.org](https://nodejs.org/).
 ### 2. Clone the Repository
 
 ```bash
-git clone https://github.com/NO6KIKO/codex-gorest.git
-cd codex-gorest
+git clone https://github.com/NO6KIKO/gorest-2d-animation-spritesheet-generator.git
+cd gorest-2d-animation-spritesheet-generator
 ```
 
 ### 3. Install Dependencies
@@ -237,7 +237,7 @@ public/generated/ Generated PNG assets and local game library data
 
 ## License
 
-Codex GoRest is open source under the [MIT License](LICENSE).
+Gorest 2D Animation Spritesheet Generator is open source under the [MIT License](LICENSE).
 
 ## Notes
 
