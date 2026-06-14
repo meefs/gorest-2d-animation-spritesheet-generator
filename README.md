@@ -77,15 +77,77 @@ npm run dev
 
 Then open `http://localhost:3001`.
 
-## Main Workflow
+## Creator Workflow
 
-1. Open the `Scenes` tab to choose, save, create, or delete scenes.
-2. Open the `Scene` tab to arrange backgrounds, characters, props, and animation layers.
-3. Use the layer list to control which object is above or below another object.
-4. Open the `Spritesheets` tab to inspect every spritesheet animation used in the current scene.
-5. Expand a spritesheet card with `Edit` to tune clip metadata, trigger settings, tags, loop mode, and direction.
-6. Use the `Action` tab to preview the scene and character movement.
-7. Save the scene when the composition feels ready.
+This project is organized around a game-scene authoring workflow rather than a single character animation tool. A typical production pass looks like this:
+
+1. Start from the `Scenes` tab.
+   Create a new scene, duplicate an existing one, delete test scenes, or open a saved scene from the scene library.
+
+2. Build the scene base in the `Scene` tab.
+   Add a background first, then place the player character, props, UI objects, foreground objects, animated props, and effects as separate editable layers.
+
+3. Arrange layers like a 2D composition.
+   Drag objects on the canvas, resize them with handles, adjust scale, and use the layer list to decide what appears above or below other objects.
+
+4. Keep animation assets reusable.
+   Save finished characters, props, UI elements, and effects into the local asset library so the same asset can be inserted into future scenes.
+
+5. Inspect all animation clips in `Spritesheets`.
+   The `Spritesheets` page lists every spritesheet used in the current scene, not just the main character. Use it to preview, locate, download, and edit each animation clip.
+
+6. Tune each clip as game data.
+   Each spritesheet can carry metadata such as action name, direction, loop mode, trigger type, trigger value, game state, and tags. This makes the visual asset reusable as gameplay data later.
+
+7. Preview the scene in `Action`.
+   Use the playable preview to check character movement, animation timing, layer order, lighting, scale, and scene composition.
+
+8. Save the completed scene.
+   Save the scene once the background, character, props, spritesheets, and metadata feel correct.
+
+## Spritesheet Authoring Rules
+
+For stable 2D game animation, spritesheets should be treated as one complete animation sheet first, then split into frames. This avoids the common problem where individually generated frames change size, drift, or lose visual consistency.
+
+Recommended rules:
+
+- Generate or import a full spritesheet whenever possible, then split it into frames.
+- Keep every frame the same pixel size.
+- Keep the character or prop centered in a consistent frame box.
+- Preserve the original character proportions from the reference image.
+- Keep the feet or base anchor stable so the object does not slide around during playback.
+- Use small, close frame-to-frame changes for idle and breathing animations.
+- Use one clean walk cycle per sheet, then loop it in playback instead of repeating the same step too many times inside the sheet.
+- For side-scrollers, create separate clips for `idle`, `walk_right`, `walk_left`, and any special action.
+- Store direction, loop, trigger, and game-state metadata on the clip so it can be reused by scene logic.
+
+## Interaction Design Model
+
+Interactive scenes are easiest to manage when interaction behavior is separated from visual layers. The recommended structure is:
+
+- Interaction zone: a draggable and resizable area that decides where the player can interact.
+- Trigger condition: proximity, mouse click, keyboard input, inventory requirement, or scene-state requirement.
+- Action: show text, play an animation, hide or show a layer, give an item, switch scenes, or update game state.
+- State: a small key-value table such as `has_key`, `radio_on`, `door_open`, or `visited_bedroom`.
+
+Useful presets for future scene building:
+
+- `Inspect`: show an eye prompt near an object, then display text when clicked.
+- `Pickup`: collect an item and hide the scene object.
+- `Toggle`: switch a layer, animation, or state on and off.
+- `Door / Scene Link`: move from one scene to another.
+- `Animated Prop`: play or loop a prop animation.
+- `Conditional`: choose different results based on scene state or inventory.
+
+## Scene Framing
+
+The editor supports a scene-size mindset instead of only a single image-size mindset. Use this when designing for different targets:
+
+- Set the full scene width and height for long side-scrolling spaces.
+- Set the viewport frame separately for desktop, tablet, or phone-style previews.
+- Position the background inside the viewport to test what the player sees first.
+- Keep gameplay objects in world coordinates so the player can move through a larger scene.
+- Use foreground and background layers to create depth while keeping the game readable.
 
 ## Spritesheet Page
 
