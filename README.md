@@ -273,3 +273,28 @@ Gorest 2D Animation Spritesheet Generator is open source under the [MIT License]
 - The app is local-first. Most editing and preview work happens without a cloud API.
 - `.env.local` is ignored so private keys are not pushed to GitHub.
 - The scene editor is built for side-scrolling 2D game prototyping, with reusable layers, spritesheets, and scene states as the core model.
+
+## Contributing
+
+We welcome contributions to the Gorest 2D Animation Spritesheet Generator! If you would like to help improve the project, please follow these steps:
+
+1. **Fork the repository**: Click the 'Fork' button at the top right of the page.
+2. **Clone your fork**: Use `git clone https://github.com/YOUR_USERNAME/gorest-2d-animation-spritesheet-generator.git` to clone your fork locally.
+3. **Create a branch**: Create a new branch for your changes with `git checkout -b my-feature-branch`.
+4. **Make your changes**: Implement your feature or bug fix.
+5. **Commit your changes**: Use `git commit -m 'Add some feature'` to commit your changes.
+6. **Push to your fork**: Push your changes back to your fork with `git push origin my-feature-branch`.
+7. **Open a pull request**: Go to the original repository and click on 'New Pull Request'.
+
+Thank you for your contributions!
+
+## FAQ
+
+**Q: How do I install the project?**  
+A: Follow the 'Quick Start' section in the README to install Node.js, clone the repository, and install dependencies.
+
+**Q: Can I use this project for commercial purposes?**  
+A: Yes, the project is open-source under the MIT License, which allows for commercial use.
+
+**Q: How can I report a bug?**  
+A: Please open an issue in the GitHub repository with a detailed description of the bug and steps to reproduce it.
