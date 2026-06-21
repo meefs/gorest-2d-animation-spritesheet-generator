@@ -20,7 +20,7 @@ import {
 } from "./domain/sprites/spriteUtils";
 import { CurrentActionPanel } from "./features/current-action";
 import { SceneLightingStrip, SceneToolbar } from "./features/scene-editor";
-import { SceneInspectorHeader } from "./features/scene-inspector";
+import { SceneInspectorHeader, SceneInspectorTransformSection } from "./features/scene-inspector";
 import {
   BackgroundLayerControls,
   LayerInteractionControls,
@@ -4007,13 +4007,11 @@ export default function App() {
                       />
                       {selectedLayer && (
                         <>
-                          <div className="compact-inspector-section">
-                            <em>Transform</em>
-                            <label>Scale {selectedLayer.scale.toFixed(2)}</label>
-                            <input type="range" min="0.05" max="2.5" step="0.01" value={selectedLayer.scale} onChange={event => updateSceneLayer(selectedLayer.id, { scale: Number(event.target.value) })} disabled={selectedLayer.locked || selectedInteractionZoneLayerId === selectedLayer.id} />
-                            <label>Opacity {Math.round(selectedLayer.opacity * 100)}%</label>
-                            <input type="range" min="0.1" max="1" step="0.01" value={selectedLayer.opacity} onChange={event => updateSceneLayer(selectedLayer.id, { opacity: Number(event.target.value) })} disabled={selectedLayer.locked || selectedInteractionZoneLayerId === selectedLayer.id} />
-                          </div>
+                          <SceneInspectorTransformSection
+                            selectedInteractionZoneLayerId={selectedInteractionZoneLayerId}
+                            selectedLayer={selectedLayer}
+                            onUpdateLayer={updateSceneLayer}
+                          />
 
                           {selectedInteractionZoneLayer && selectedInteractionZoneSettings && (
                             <div className="compact-inspector-section interaction-zone-inspector">
