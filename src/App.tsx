@@ -41,6 +41,7 @@ import { buildSceneFlowNodes, SceneFlowCanvas, type SceneFlowNode } from "./feat
 import { ModePicker } from "./features/mode-picker";
 import { buildSheetOnlyEntries, SheetOnlyGallery } from "./features/sheet-only-gallery";
 import { SpritesheetImporterPanel } from "./features/spritesheet-importer";
+import { WorkspaceStageHeader } from "./features/workspace-stage-header";
 import { WorkspaceTopbar } from "./features/workspace-topbar";
 import { fetchGameLibrary, fetchLatestSprite } from "./services/gameLibraryApi";
 import { fetchGeneratedAssets, type RepositoryGeneratedImage } from "./services/generatedAssetsApi";
@@ -3587,48 +3588,25 @@ export default function App() {
 
         <section className="canvas-stage">
           <div className="blueprint-grid">
-            <div className="stage-header">
-              <div>
-                <p className="eyebrow">Scene Composer</p>
-                <h2>{tab === "scenes" ? "Scene Library" : tab === "spritesheets" ? "Scene Spritesheets" : scene.name}</h2>
-              </div>
-              <div className="workspace-tabs">
-                <div className="tabs primary-tabs">
-                  <button className={tab === "scenes" ? "active" : ""} onClick={() => setTab("scenes")}><MapIcon size={15} /> 2D Canvas</button>
-                  <button className={tab === "scene" ? "active" : ""} onClick={() => setTab("scene")}><MapIcon size={15} /> 2D Scene</button>
-                  {tab === "scene" && (
-                    <div className="scene-size-controls" aria-label="2D Scene screen size">
-                      <Monitor size={15} />
-                      <select
-                        aria-label="Screen size preset"
-                        value={scene.viewportPreset}
-                        onChange={event => {
-                          const preset = VIEWPORT_PRESETS.find(item => item.id === event.target.value);
-                          if (preset) updateSceneFrame({ viewportWidth: preset.width, viewportHeight: preset.height, viewportPreset: preset.id });
-                        }}
-                      >
-                        <option value="custom">Custom</option>
-                        {VIEWPORT_PRESETS.map(preset => (
-                          <option key={preset.id} value={preset.id}>
-                            {preset.label} / {preset.width} x {preset.height}
-                          </option>
-                        ))}
-                      </select>
-                      <input aria-label="Screen width" type="number" min="240" value={Math.round(viewportWidth)} onChange={event => updateSceneFrame({ viewportWidth: Number(event.target.value), viewportPreset: "custom" })} />
-                      <span>x</span>
-                      <input aria-label="Screen height" type="number" min="240" value={Math.round(viewportHeight)} onChange={event => updateSceneFrame({ viewportHeight: Number(event.target.value), viewportPreset: "custom" })} />
-                    </div>
-                  )}
-                </div>
-                <div className="tabs advanced-tabs">
-                  <button className={tab === "spritesheets" ? "active" : ""} onClick={() => setTab("spritesheets")}><Film size={15} /> Spritesheets</button>
-                  <button className={tab === "preview" ? "active" : ""} onClick={() => setTab("preview")}><Play size={15} /> Action</button>
-                  <button className={tab === "frames" ? "active" : ""} onClick={() => setTab("frames")}>Frames</button>
-                  <button className={tab === "sheet" ? "active" : ""} onClick={async () => { setTab("sheet"); if (!activeSprite.spritesheetPng && !sheetDataUrl) await compileSheet(); }}>Sheet</button>
-                  <button className={tab === "blueprint" ? "active" : ""} onClick={() => setTab("blueprint")}>Blueprint</button>
-                </div>
-              </div>
-            </div>
+            <WorkspaceStageHeader
+              activeTab={tab}
+              title={tab === "scenes" ? "Scene Library" : tab === "spritesheets" ? "Scene Spritesheets" : scene.name}
+              viewportHeight={viewportHeight}
+              viewportPreset={scene.viewportPreset}
+              viewportPresets={VIEWPORT_PRESETS}
+              viewportWidth={viewportWidth}
+              onOpenSheet={async () => {
+                setTab("sheet");
+                if (!activeSprite.spritesheetPng && !sheetDataUrl) await compileSheet();
+              }}
+              onTabChange={setTab}
+              onViewportHeightChange={height => updateSceneFrame({ viewportHeight: height, viewportPreset: "custom" })}
+              onViewportPresetChange={presetId => {
+                const preset = VIEWPORT_PRESETS.find(item => item.id === presetId);
+                if (preset) updateSceneFrame({ viewportWidth: preset.width, viewportHeight: preset.height, viewportPreset: preset.id });
+              }}
+              onViewportWidthChange={width => updateSceneFrame({ viewportWidth: width, viewportPreset: "custom" })}
+            />
 
             {tab === "scenes" && (
               <SceneFlowCanvas
