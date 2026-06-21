@@ -19,10 +19,10 @@ import {
   createAsset,
   defaultGameStateForTrigger,
   defaultTriggerValueForType,
-  escapeHtmlAttribute,
   safeName,
   splitTags,
 } from "./domain/assets/assetModel";
+import { createImportedSpritesheetAsset, createUploadedStaticObjectAsset } from "./domain/assets/assetImportFactory";
 import {
   BOARDING_TRAIN_ASSET_ID,
   BUILT_IN_SCENE_KIT_ASSET_IDS,
@@ -1198,45 +1198,14 @@ export default function App() {
       const dataUrl = String(reader.result || "");
       const image = new Image();
       image.onload = async () => {
-        const now = new Date().toISOString();
-        const baseName = file.name.replace(/\.[^.]+$/, "") || "Uploaded Object";
         const width = Math.max(1, image.naturalWidth || image.width || 256);
         const height = Math.max(1, image.naturalHeight || image.height || 256);
-        const safeBase = safeName(baseName);
-        const sprite: AnimationSprite = {
-          id: `sprite_static_${safeBase}_${Date.now()}`,
-          characterName: baseName,
-          description: `Uploaded static object from ${file.name}.`,
-          frameCount: 1,
-          style: "Uploaded static object",
-          frames: [`<img src="${dataUrl}" alt="${escapeHtmlAttribute(baseName)}" draggable="false" />`],
-          createdTime: now,
-          isPreset: false,
-          spritesheetPng: dataUrl,
-          rawSpritesheetPng: dataUrl,
-          frameSize: [width, height],
-          sheetSize: [width, height],
-          generationMode: "uploaded-static-object",
-          proportionPolicy: "Uploaded static object keeps its original pixel ratio and can be resized as a scene layer.",
-        };
-        const binding: ActionBinding = {
-          actionName: "static",
-          triggerType: "auto",
-          triggerValue: "auto",
-          gameState: `static.${safeBase}`,
-          notes: "Static object uploaded from the Layer panel.",
-        };
-        const asset: GameAsset = {
-          id: `asset_static_${safeBase}_${Date.now()}`,
-          name: baseName,
-          role: "prop",
-          confirmed: true,
-          savedTime: now,
-          updatedTime: now,
-          sprite,
-          binding,
-          tags: ["uploaded", "static-object"],
-        };
+        const { asset, sprite } = createUploadedStaticObjectAsset({
+          dataUrl,
+          fileName: file.name,
+          width,
+          height,
+        });
 
         try {
           const data = await saveGameAsset(asset, "Failed to save uploaded object");
@@ -1424,59 +1393,27 @@ export default function App() {
       return;
     }
 
-    const now = new Date().toISOString();
     const actionName = importActionName.trim() || "loop";
     const assetName = importAssetName.trim() || "Imported Animation";
-    const binding: ActionBinding = {
+    const { asset, sprite } = createImportedSpritesheetAsset({
+      dataUrl: importSheetDataUrl,
+      fileName: importFileName,
+      assetName,
       actionName,
-      triggerType: importTriggerType,
-      triggerValue: importTriggerValue.trim() || defaultTriggerValueForType(importTriggerType),
-      gameState: importGameState.trim() || defaultGameStateForTrigger(importTriggerType, actionName),
-      notes: importTriggerType === "auto" && importLoop
-        ? "Imported spritesheet loops continuously while it is visible in the scene."
-        : "Imported spritesheet action with configurable trigger metadata.",
-    };
-    const sprite: AnimationSprite = {
-      id: `sprite_import_${safeName(assetName)}_${Date.now()}`,
-      characterName: assetName,
-      description: `Imported ${frameCount}-frame spritesheet from ${importFileName || "uploaded image"}.`,
+      frameWidth,
+      frameHeight,
       frameCount,
-      style: "Imported spritesheet",
-      frames: buildSpritesheetFrames(importSheetDataUrl, sheetWidth, sheetHeight, frameWidth, frameHeight, frameCount, columns),
-      createdTime: now,
-      isPreset: false,
-      spritesheetPng: importSheetDataUrl,
-      fps,
-      gridColumns: columns,
-      frameSize: [frameWidth, frameHeight],
-      sheetSize: [sheetWidth, sheetHeight],
-      generationMode: "uploaded-spritesheet",
-      proportionPolicy: "Use the exact uploaded frame grid; do not stretch or recrop frames.",
-      adaptiveFramePolicy: `${columns} columns, ${rows} rows, ${frameCount} active frames.`,
-    };
-    const clip: AnimationClip = {
-      id: `clip_${safeName(actionName)}_${Date.now()}`,
-      name: actionName,
-      actionName,
-      direction: "none",
-      sprite,
-      binding,
+      columns,
+      sheetWidth,
+      sheetHeight,
+      role: importRole,
+      triggerType: importTriggerType,
+      triggerValue: importTriggerValue,
+      gameState: importGameState,
+      tagsText: importTagsText,
       loop: importLoop,
       fps,
-    };
-    const asset: GameAsset = {
-      id: `asset_${safeName(assetName)}_${safeName(actionName)}_${Date.now()}`,
-      name: `${assetName} / ${actionName}`,
-      role: importRole,
-      confirmed: true,
-      savedTime: now,
-      updatedTime: now,
-      sprite,
-      animations: [clip],
-      defaultAnimationId: clip.id,
-      binding,
-      tags: splitTags(importTagsText),
-    };
+    });
 
     try {
       const data = await saveGameAsset(asset, "Failed to import spritesheet asset");
