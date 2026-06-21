@@ -36,12 +36,12 @@ export function CommunityHelp() {
               <X size={18} />
             </button>
 
-            <img className="community-help-logo" src="/brand/gorest-logo.png" alt="Gorest" />
+            <img className="community-help-logo" src="/brand/gorest-logo-black.png" alt="Gorest" />
 
             <div className="community-help-copy">
-              <p>Community</p>
-              <h2 id="community-help-title">Do you like us?</h2>
-              <span>Join our Discord community to share feedback, contribute ideas, and build the future of games together.</span>
+              <p>Help & Feedback</p>
+              <h2 id="community-help-title">Not sure how to use it?</h2>
+              <span>Tell us what feels confusing or hard to use. We will answer as soon as we can and keep improving the tool.</span>
             </div>
 
             <a className="community-help-discord" href={DISCORD_URL} target="_blank" rel="noreferrer">

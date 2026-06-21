@@ -4,22 +4,47 @@ An open-source, no-UI 2D game and animation generative platform for turning conc
 
 We open-sourced this 2D platform to make game creation simpler, and we will keep improving it in public. We welcome your support, feedback, and contributions.
 
-Official website: [gorest.ai](https://gorest.ai/)
+> **Tip for Codex users:** You do not need to connect an extra API to customize this tool. Open this repo in Codex and point it at this document or the codebase, then describe what you want to change. Codex can update the software directly.
+>
+> This is a combination of dynamic software and a no-UI workflow: instead of operating fixed controls inside an interface, you describe the tool or workflow you need, and the agent changes the tool to match.
 
 <p align="center">
   <img src="./public/brand/gorest-logo.png" alt="Gorest logo" width="480" />
 </p>
 
 <div align="center">
-  <strong>Do you like us?</strong><br />
-  Join our Discord community to contribute to the open-source 2D platform and share feedback.
-  <br /><br />
   <a href="https://gorest.ai/"><strong>Official Website</strong></a>
   &nbsp;|&nbsp;
   <a href="https://discord.gg/6xjFbau6T"><strong>Join the Gorest Discord</strong></a>
 </div>
 
 ---
+
+## Preview Gallery
+
+### Scene Composer
+
+<p align="center">
+  <img src="./docs/readme/scene-composer-shrine.jpg" alt="Scene composer with character and shrine entrance background" width="900" />
+</p>
+
+### Side-Scroller Preview
+
+<p align="center">
+  <img src="./docs/readme/side-scroller-bedroom.jpg" alt="Side-scroller scene preview with a walking character in a dark bedroom" width="900" />
+</p>
+
+### Action Asset Setup
+
+<p align="center">
+  <img src="./docs/readme/action-carousel-asset.jpg" alt="Action asset setup panel showing a carousel spritesheet and trigger metadata" width="900" />
+</p>
+
+### Spritesheet Playback
+
+<p align="center">
+  <img src="./docs/readme/spritesheet-walk-preview.jpg" alt="Spritesheet playback preview for a side-walk cycle" width="900" />
+</p>
 
 The app is designed for fast visual iteration: open a scene, place the character and props, inspect every spritesheet used in that scene, tune metadata, preview movement, and save the finished setup.
 
