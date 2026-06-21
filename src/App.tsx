@@ -41,6 +41,7 @@ import { ModePicker } from "./features/mode-picker";
 import { buildSheetOnlyEntries, SheetOnlyGallery } from "./features/sheet-only-gallery";
 import { SpritesheetImporterPanel } from "./features/spritesheet-importer";
 import { WorkspaceStageHeader } from "./features/workspace-stage-header";
+import { MotionSpeedPanel } from "./features/workspace-right-panel";
 import { TriggerTestPanel, WorkspaceMessages } from "./features/workspace-sidebar";
 import { WorkspaceTopbar } from "./features/workspace-topbar";
 import { fetchGameLibrary, fetchLatestSprite } from "./services/gameLibraryApi";
@@ -4840,16 +4841,12 @@ export default function App() {
         </section>
 
         <aside className="panel right-panel utility-panel">
-          <section>
-            <div className="section-title"><Film size={17} /> Motion Speed</div>
-            <div className="layer-controls">
-              <label>Animation FPS {fps}</label>
-              <input type="range" min="4" max="24" step="1" value={fps} onChange={event => setFps(Number(event.target.value))} />
-              <label>Walk Speed {walkSpeed} px/s</label>
-              <input type="range" min="40" max="240" step="5" value={walkSpeed} onChange={event => setWalkSpeed(Number(event.target.value))} />
-              <div className="control-hint">FPS controls spritesheet playback. Walk speed only controls A/D movement through the long scene.</div>
-            </div>
-          </section>
+          <MotionSpeedPanel
+            fps={fps}
+            walkSpeed={walkSpeed}
+            onFpsChange={setFps}
+            onWalkSpeedChange={setWalkSpeed}
+          />
 
           <section>
             <div className="section-title"><Eye size={17} /> Global Scene Lighting</div>
