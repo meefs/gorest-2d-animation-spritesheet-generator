@@ -10,7 +10,7 @@ import {
   spriteGridRows,
 } from "./domain/sprites/spriteUtils";
 import { CurrentActionPanel } from "./features/current-action";
-import { SceneBackgroundLayer, SceneGlobalControls, SceneLightingStrip, SceneStageEnvironment, SceneToolbar } from "./features/scene-editor";
+import { SceneBackgroundLayer, SceneGlobalControls, SceneLightingStrip, SceneStageEnvironment, SceneStageOverlays, SceneToolbar } from "./features/scene-editor";
 import {
   SceneInspectorAvatarSection,
   SceneInspectorHeader,
@@ -3855,45 +3855,17 @@ export default function App() {
                         </Fragment>
                       );
                     })}
-                  {nearbyInteraction && (
-                    <button
-                      type="button"
-                      className={`interaction-prompt ${nearbyInteraction.interaction.promptStyle}`}
-                      style={{
-                        left: (nearbyInteraction.bounds.centerX - scene.cameraX * (nearbyInteraction.layer.parallax ?? 1)) * stageScaleX + nearbyInteraction.interaction.offsetX * spriteStageScale,
-                        top: Math.max(14, nearbyInteraction.bounds.top * stageScaleY + nearbyInteraction.interaction.offsetY * spriteStageScale),
-                        zIndex: nearbyInteraction.layer.zIndex + 8,
-                        ["--prompt-font-size" as string]: `${nearbyInteraction.interaction.fontSize}px`,
-                        ["--prompt-scale" as string]: nearbyInteraction.interaction.promptScale,
-                      }}
-                      onClick={event => {
-                        event.stopPropagation();
-                        triggerNearbyInteraction(nearbyInteraction);
-                      }}
-                      title={nearbyInteraction.interaction.promptText || "Inspect"}
-                    >
-                      <span className="interaction-eye" aria-hidden="true">
-                        <img src="/generated/ui_chinese_horror_eye_inspect_prompt.png" alt="" draggable={false} />
-                      </span>
-                      {nearbyInteraction.interaction.showText && nearbyInteraction.interaction.promptText && (
-                        <strong>{nearbyInteraction.interaction.promptText}</strong>
-                      )}
-                    </button>
-                  )}
-                  {interactionToast && <div className="interaction-toast">{interactionToast}</div>}
-                  {isBackpackOpen && (
-                    <button
-                      type="button"
-                      className="backpack-panel-overlay"
-                      onClick={event => {
-                        event.stopPropagation();
-                        setIsBackpackOpen(false);
-                      }}
-                      title="Click to close backpack"
-                    >
-                      <img src="/generated/scene_kit_backpack_panel.png" alt="Open backpack inventory" draggable={false} />
-                    </button>
-                  )}
+                  <SceneStageOverlays
+                    interactionToast={interactionToast}
+                    isBackpackOpen={isBackpackOpen}
+                    nearbyInteraction={nearbyInteraction}
+                    sceneCameraX={scene.cameraX}
+                    spriteStageScale={spriteStageScale}
+                    stageScaleX={stageScaleX}
+                    stageScaleY={stageScaleY}
+                    onCloseBackpack={() => setIsBackpackOpen(false)}
+                    onTriggerNearbyInteraction={triggerNearbyInteraction}
+                  />
                     </div>
                     <SceneGlobalControls
                       ref={sceneGlobalControlsRef}
