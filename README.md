@@ -1,6 +1,10 @@
 # Gorest 2D Animation Spritesheet Generator
 
-A local browser workspace for building side-scrolling 2D game scenes, importing or generating spritesheets, previewing animation clips, and organizing reusable scene assets.
+An open-source, no-UI 2D game and animation generative platform for turning concepts, references, and spritesheets into animation-ready scenes, previews, and reusable game assets.
+
+We open-sourced this 2D platform to make game creation simpler, and we will keep improving it in public.
+
+Beyond this open-source 2D tool, Gorest is building a 3D engine for accessible AAA-quality game creation. We welcome your support, feedback, and contributions to the 2D platform.
 
 <p align="center">
   <img src="./public/brand/gorest-logo.jpg" alt="Gorest logo" width="360" />
@@ -8,8 +12,10 @@ A local browser workspace for building side-scrolling 2D game scenes, importing 
 
 <div align="center">
   <strong>Do you like us?</strong><br />
-  If you want to contribute, share feedback, or follow what we are building, join our Discord community.
+  Join our Discord community to contribute to the open-source 2D platform, share feedback, and follow Gorest's 3D engine work.
   <br /><br />
+  <a href="https://gorest.ai/"><strong>Official Website</strong></a>
+  &nbsp;|&nbsp;
   <a href="https://discord.gg/6xjFbau6T"><strong>Join the Gorest Discord</strong></a>
 </div>
 

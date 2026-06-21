@@ -4,6 +4,7 @@ type ModePickerProps = {
 };
 
 const DISCORD_URL = "https://discord.gg/6xjFbau6T";
+const WEBSITE_URL = "https://gorest.ai/";
 
 export function ModePicker({ onOpenGame, onOpenSheetOnly }: ModePickerProps) {
   return (
@@ -11,17 +12,25 @@ export function ModePicker({ onOpenGame, onOpenSheetOnly }: ModePickerProps) {
       <section className="mode-picker-shell" aria-labelledby="mode-picker-title">
         <header className="mode-picker-brand">
           <img className="mode-picker-logo" src="/brand/gorest-logo.jpg" alt="Gorest" />
-          <a className="mode-picker-discord" href={DISCORD_URL} target="_blank" rel="noreferrer">
-            Join Discord
-          </a>
+          <div className="mode-picker-actions">
+            <a className="mode-picker-link" href={WEBSITE_URL} target="_blank" rel="noreferrer">
+              Website
+            </a>
+            <a className="mode-picker-link mode-picker-link-primary" href={DISCORD_URL} target="_blank" rel="noreferrer">
+              Join Discord
+            </a>
+          </div>
         </header>
 
         <div className="mode-picker-copy">
-          <p className="mode-picker-kicker">Gorest Asset Studio</p>
+          <p className="mode-picker-kicker">Open-source No-UI 2D Game / Animation Generative Platform</p>
           <h1 id="mode-picker-title">We are infinite.</h1>
           <p>
-            Gorest is a 2D game asset pipeline for turning spritesheets into animation-ready scenes,
-            previews, and reusable game objects.
+            Turn ideas, references, and spritesheets into game-ready 2D assets.
+          </p>
+          <p className="mode-picker-mission">
+            Beyond this open-source 2D tool, Gorest is building a 3D engine for accessible
+            AAA-quality game creation. We welcome your support.
           </p>
         </div>
 

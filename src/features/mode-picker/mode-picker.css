@@ -31,16 +31,23 @@
   display: block;
 }
 
-.mode-picker-discord {
-  min-height: 42px;
+.mode-picker-actions {
   flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.mode-picker-link {
+  min-height: 42px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 18px;
   border: 2px solid #151515;
-  background: #151515;
-  color: #fff;
+  background: #fff;
+  color: #151515;
   font-size: 13px;
   font-weight: 850;
   line-height: 1;
@@ -48,7 +55,13 @@
   text-transform: uppercase;
 }
 
-.mode-picker-discord:hover {
+.mode-picker-link-primary,
+.mode-picker-link:hover {
+  background: #151515;
+  color: #fff;
+}
+
+.mode-picker-link-primary:hover {
   background: #fff;
   color: #151515;
 }
@@ -82,6 +95,11 @@
   font-size: clamp(16px, 2vw, 19px);
   font-weight: 520;
   line-height: 1.55;
+}
+
+.mode-picker-copy .mode-picker-mission {
+  color: #555;
+  font-size: clamp(14px, 1.7vw, 17px);
 }
 
 .mode-choice-grid {
@@ -122,8 +140,13 @@
     flex-direction: column;
   }
 
-  .mode-picker-discord {
+  .mode-picker-actions {
     width: 100%;
+    justify-content: stretch;
+  }
+
+  .mode-picker-link {
+    flex: 1 1 0;
   }
 
   .mode-choice-grid {
