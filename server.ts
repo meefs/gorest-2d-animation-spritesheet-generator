@@ -1,4 +1,4 @@
-﻿import express from "express";
+import express from "express";
 import path from "path";
 import fs from "fs";
 import * as net from "node:net";
@@ -95,7 +95,10 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 function readGameLibrary() {
   const empty = { assets: [], scenes: [], updatedTime: new Date().toISOString() };
   try {
-    if (!fs.existsSync(GAME_LIBRARY_PATH)) return empty;
+    if (!fs.existsSync(GAME_LIBRARY_PATH)) {
+  console.warn('Game asset library not found, returning empty library.');
+  return empty;
+}
     const raw = fs.readFileSync(GAME_LIBRARY_PATH, "utf-8").replace(/^\uFEFF/, "");
     const parsed = JSON.parse(raw);
     return {
