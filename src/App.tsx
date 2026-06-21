@@ -1,5 +1,6 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties, type ChangeEvent, type DragEvent, type MouseEvent, type PointerEvent } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent, type MouseEvent, type PointerEvent } from "react";
 import {
+  ArrowLeft,
   CheckCircle2,
   Clipboard,
   Copy,
@@ -26,7 +27,21 @@ import {
   X,
 } from "lucide-react";
 import { PRESET_SPRITES } from "./presets";
+import type { AppMode, SheetOnlySelectionKind, WorkspaceTab } from "./app/types";
+import {
+  buildSpritesheetFrames,
+  getFrameSize,
+  spriteFrame,
+  spriteFrameTotal,
+  spriteGridColumns,
+  spriteGridRows,
+  spritesheetFrameThumbStyle,
+} from "./domain/sprites/spriteUtils";
 import { buildSceneFlowNodes, SceneFlowCanvas, type SceneFlowNode } from "./features/scene-flow";
+import { ModePicker } from "./features/mode-picker";
+import { buildSheetOnlyEntries, SheetOnlyGallery } from "./features/sheet-only-gallery";
+import { fetchGameLibrary, fetchLatestSprite } from "./services/gameLibraryApi";
+import { fetchGeneratedAssets, type RepositoryGeneratedImage } from "./services/generatedAssetsApi";
 import {
   ActionBinding,
   ActionTriggerType,
@@ -42,7 +57,6 @@ import {
   SceneLayer,
 } from "./types";
 
-type WorkspaceTab = "scenes" | "scene" | "spritesheets" | "preview" | "frames" | "sheet" | "blueprint";
 type BackgroundMode = "checker" | "dark" | "light" | "green";
 type ResizeHandle = "nw" | "ne" | "sw" | "se";
 type ScenePanelResizeHandle = "layers" | "inspector";
@@ -91,7 +105,6 @@ type SceneSpritesheetEntry = {
   frameWidth: number;
   frameHeight: number;
 };
-
 const VIEWPORT_WIDTH = 1280;
 const DEFAULT_WALK_SPEED = 120;
 const BOARDING_TRAIN_ASSET_ID = "asset_scene_boarding_train";
@@ -318,22 +331,6 @@ function formatViewportRatio(width: number, height: number) {
   if (!width || !height) return "custom";
   const ratio = width / height;
   return ratio >= 1 ? `${ratio.toFixed(2)}:1` : `1:${(height / width).toFixed(2)}`;
-}
-
-function spriteFrameTotal(sprite?: AnimationSprite) {
-  return sprite?.frames.length || sprite?.frameCount || 0;
-}
-
-function spriteGridColumns(sprite?: AnimationSprite) {
-  if (!sprite) return 1;
-  if (sprite.gridColumns && sprite.gridColumns > 0) return Math.round(sprite.gridColumns);
-  const [frameWidth] = getFrameSize(sprite);
-  const sheetWidth = sprite.sheetSize?.[0] || frameWidth;
-  return Math.max(1, Math.round(sheetWidth / Math.max(1, frameWidth)));
-}
-
-function spriteGridRows(sprite?: AnimationSprite) {
-  return Math.max(1, Math.ceil(Math.max(1, spriteFrameTotal(sprite)) / spriteGridColumns(sprite)));
 }
 
 function ViewportPresetIconView({ icon }: { icon: ViewportPresetIcon }) {
@@ -1172,15 +1169,6 @@ function createDefaultScene(): GameScene {
   return scene;
 }
 
-function getFrameSize(sprite: AnimationSprite): [number, number] {
-  const [frameW, frameH] = sprite.frameSize || [];
-  if (Number.isFinite(frameW) && Number.isFinite(frameH) && frameW > 0 && frameH > 0) {
-    return [frameW, frameH];
-  }
-  const cell = sprite.cellSize || 256;
-  return [cell, cell];
-}
-
 function downloadUrl(url: string, filename: string) {
   const link = document.createElement("a");
   link.href = url;
@@ -1234,47 +1222,6 @@ async function drawSvgFrame(ctx: CanvasRenderingContext2D, svg: string, x: numbe
   } finally {
     URL.revokeObjectURL(url);
   }
-}
-
-function spriteFrame(sprite: AnimationSprite, frameIndex: number) {
-  const frames = sprite.frames || [];
-  return frames[frameIndex % Math.max(1, frames.length)] || frames[0] || "";
-}
-
-function cssImageUrl(url: string) {
-  return `url("${url.replace(/["\\]/g, "\\$&")}")`;
-}
-
-function spritesheetFrameThumbStyle(sprite: AnimationSprite, frameIndex: number): CSSProperties | undefined {
-  const source = sprite.rawSpritesheetPng || sprite.spritesheetPng;
-  if (!source) return undefined;
-  const columns = spriteGridColumns(sprite);
-  const rows = spriteGridRows(sprite);
-  const column = frameIndex % columns;
-  const row = Math.floor(frameIndex / columns);
-  const x = columns <= 1 ? 0 : (column / (columns - 1)) * 100;
-  const y = rows <= 1 ? 0 : (row / (rows - 1)) * 100;
-  return {
-    backgroundImage: cssImageUrl(source),
-    backgroundPosition: `${x}% ${y}%`,
-    backgroundSize: `${columns * 100}% ${rows * 100}%`,
-  };
-}
-
-function buildSpritesheetFrames(
-  dataUrl: string,
-  sheetWidth: number,
-  sheetHeight: number,
-  frameWidth: number,
-  frameHeight: number,
-  frameCount: number,
-  columns: number
-) {
-  return Array.from({ length: frameCount }, (_, index) => {
-    const x = (index % columns) * frameWidth;
-    const y = Math.floor(index / columns) * frameHeight;
-    return `<svg xmlns="http://www.w3.org/2000/svg" width="${frameWidth}" height="${frameHeight}" viewBox="${x} ${y} ${frameWidth} ${frameHeight}" overflow="hidden"><image href="${dataUrl}" x="0" y="0" width="${sheetWidth}" height="${sheetHeight}" preserveAspectRatio="none"/></svg>`;
-  });
 }
 
 function createAsset(sprite: AnimationSprite, role: AssetRole, binding: ActionBinding, tagsText: string): GameAsset {
@@ -1333,10 +1280,12 @@ export default function App() {
   const [sprites, setSprites] = useState<AnimationSprite[]>(PRESET_SPRITES);
   const [activeSprite, setActiveSprite] = useState<AnimationSprite>(PRESET_SPRITES[0]);
   const [assets, setAssets] = useState<GameAsset[]>([]);
+  const [repositoryImages, setRepositoryImages] = useState<RepositoryGeneratedImage[]>([]);
   const [scenes, setScenes] = useState<GameScene[]>([]);
   const [scene, setScene] = useState<GameScene>(() => prepareSceneForEditor(createDefaultScene()));
   const [selectedLayerId, setSelectedLayerId] = useState<string>("layer_ground");
   const [selectedInteractionZoneLayerId, setSelectedInteractionZoneLayerId] = useState<string | null>(null);
+  const [appMode, setAppMode] = useState<AppMode>("home");
   const [tab, setTab] = useState<WorkspaceTab>("scenes");
   const [activeFrame, setActiveFrame] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -1373,6 +1322,9 @@ export default function App() {
   const [sceneContextMenu, setSceneContextMenu] = useState<SceneContextMenuState | null>(null);
   const [sceneClipboard, setSceneClipboard] = useState<SceneLayerClipboard | null>(null);
   const [isLayerLibraryOpen, setIsLayerLibraryOpen] = useState(false);
+  const [sheetOnlyHasSelection, setSheetOnlyHasSelection] = useState(false);
+  const [sheetOnlySelectionKind, setSheetOnlySelectionKind] = useState<SheetOnlySelectionKind>(null);
+  const [sheetOnlySelectionTitle, setSheetOnlySelectionTitle] = useState("");
   const [interactionToast, setInteractionToast] = useState("");
   const [isBackpackOpen, setIsBackpackOpen] = useState(false);
   const [vehiclePhase, setVehiclePhase] = useState<VehiclePhase>("approaching");
@@ -1489,6 +1441,12 @@ export default function App() {
         });
       });
   }, [assetById, scene.layers]);
+
+  const sheetOnlyEntries = useMemo(() => buildSheetOnlyEntries({
+    assets,
+    repositoryImages,
+    sprites,
+  }), [assets, repositoryImages, sprites]);
 
   const selectedLayerAsset = selectedLayer?.assetId ? assetById.get(selectedLayer.assetId) : undefined;
   const selectedLayerClip = resolveAssetClip(selectedLayerAsset, selectedLayer);
@@ -1703,15 +1661,17 @@ export default function App() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/api/spritesheet/latest").then(res => res.json()).catch(() => ({ sprite: null })),
-      fetch("/api/game-library").then(res => res.json()).catch(() => ({ assets: [], scenes: [] })),
-    ]).then(([latestData, libraryData]: [{ sprite: AnimationSprite | null }, GameLibrary]) => {
+      fetchLatestSprite().catch(() => null),
+      fetchGameLibrary().catch(() => ({ assets: [], scenes: [] })),
+      fetchGeneratedAssets().catch(() => []),
+    ]).then(([latestSprite, libraryData, generatedFiles]: [AnimationSprite | null, GameLibrary, RepositoryGeneratedImage[]]) => {
       if (cancelled) return;
-      if (latestData.sprite && Array.isArray(latestData.sprite.frames)) {
-        setSprites(prev => [latestData.sprite!, ...prev.filter(sprite => sprite.id !== latestData.sprite!.id)]);
-        setActiveSprite(latestData.sprite);
+      if (latestSprite) {
+        setSprites(prev => [latestSprite, ...prev.filter(sprite => sprite.id !== latestSprite.id)]);
+        setActiveSprite(latestSprite);
       }
       if (Array.isArray(libraryData.assets)) setAssets(libraryData.assets);
+      setRepositoryImages(generatedFiles);
       if (Array.isArray(libraryData.scenes) && libraryData.scenes.length) {
         const firstScene = libraryData.scenes[0];
         setScenes(libraryData.scenes.map(prepareSceneForEditor));
@@ -2450,6 +2410,35 @@ export default function App() {
     setNotice("Save the current spritesheet as a confirmed asset before inserting it into the scene.");
   };
 
+  const selectSheetOnlySprite = (previewSprite: AnimationSprite, title = previewSprite.characterName, asset?: GameAsset) => {
+    if (!previewSprite?.frames.length) return;
+    const defaultClip = asset?.animations?.find(clip => clip.id === asset.defaultAnimationId) || asset?.animations?.[0];
+    setActiveSprite(previewSprite);
+    setActiveFrame(0);
+    setIsPlaying(false);
+    setSheetOnlyHasSelection(true);
+    setSheetOnlySelectionKind("sprite");
+    setSheetOnlySelectionTitle(title);
+    setSheetColumns(previewSprite.gridColumns || Math.min(4, previewSprite.frames.length || 4));
+    setSheetDataUrl(previewSprite.spritesheetPng || previewSprite.rawSpritesheetPng || null);
+    if (asset) {
+      setRole(asset.role);
+      setBinding(defaultClip?.binding || asset.binding || defaultBinding);
+      setTagsText(asset.tags.join(", "));
+    }
+    setNotice(`Loaded spritesheet object: ${title}`);
+  };
+
+  const selectSheetOnlyImage = (imageUrl: string, title: string) => {
+    setActiveFrame(0);
+    setIsPlaying(false);
+    setSheetOnlyHasSelection(true);
+    setSheetOnlySelectionKind("image");
+    setSheetOnlySelectionTitle(title);
+    setSheetDataUrl(imageUrl);
+    setNotice(`Loaded image: ${title}`);
+  };
+
   const insertSceneKitAsset = (assetId: string) => {
     const asset = SCENE_KIT_ASSETS.find(item => item.id === assetId);
     if (!asset) return;
@@ -3161,6 +3150,35 @@ export default function App() {
     return url;
   };
 
+  const openGameMode = () => {
+    setAppMode("game");
+    setTab("scenes");
+  };
+
+  const openSheetOnlyMode = () => {
+    setAppMode("sheet-only");
+    setTab("sheet");
+    setIsPlaying(false);
+    setSheetOnlyHasSelection(false);
+    setSheetOnlySelectionKind(null);
+    setSheetOnlySelectionTitle("");
+  };
+
+  const returnToModePicker = () => {
+    setIsPlaying(false);
+    setAppMode("home");
+  };
+
+  useEffect(() => {
+    if (appMode !== "sheet-only" || !sheetOnlyHasSelection || sheetOnlySelectionKind !== "sprite") return;
+    if (activeSprite.spritesheetPng) {
+      setSheetDataUrl(activeSprite.spritesheetPng);
+      return;
+    }
+    setSheetDataUrl(null);
+    void compileSheet().catch((err: any) => setError(err.message || "Failed to generate spritesheet preview"));
+  }, [appMode, activeSprite.id, activeSprite.spritesheetPng, sheetOnlyHasSelection, sheetOnlySelectionKind]);
+
   const downloadSheet = async () => {
     try {
       const url = activeSprite.spritesheetPng || sheetDataUrl || await compileSheet();
@@ -3450,10 +3468,38 @@ export default function App() {
 
   const bgClass = bgMode === "checker" ? "preview-bg checker" : `preview-bg ${bgMode}`;
 
+  if (appMode === "home") {
+    return <ModePicker onOpenGame={openGameMode} onOpenSheetOnly={openSheetOnlyMode} />;
+  }
+
+  if (appMode === "sheet-only") {
+    return (
+      <SheetOnlyGallery
+        activeSpriteName={activeSprite.characterName}
+        checkerStyle={checkerStyle}
+        entries={sheetOnlyEntries}
+        hasSelection={sheetOnlyHasSelection}
+        selectionTitle={sheetOnlySelectionTitle}
+        sheetDataUrl={sheetDataUrl}
+        onBack={returnToModePicker}
+        onGeneratePreview={() => void compileSheet()}
+        onSelectImage={selectSheetOnlyImage}
+        onSelectSprite={selectSheetOnlySprite}
+        onShowAll={() => {
+          setSheetOnlyHasSelection(false);
+          setSheetOnlySelectionKind(null);
+        }}
+      />
+    );
+  }
+
   return (
     <div className={`blueprint-app ${tab === "scenes" || tab === "scene" ? "core-mode" : ""}`}>
       <header className="topbar">
-        <div>
+        <button type="button" className="mode-back-button" onClick={returnToModePicker}>
+          <ArrowLeft size={16} /> Back
+        </button>
+        <div className="topbar-title">
           <p className="eyebrow">2D Side-Scroller Asset Studio</p>
           <h1>Spritesheet Game Asset Pipeline</h1>
         </div>
