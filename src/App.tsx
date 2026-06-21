@@ -37,6 +37,7 @@ import {
   spriteGridRows,
   spritesheetFrameThumbStyle,
 } from "./domain/sprites/spriteUtils";
+import { CurrentActionPanel } from "./features/current-action";
 import { buildSceneFlowNodes, SceneFlowCanvas, type SceneFlowNode } from "./features/scene-flow";
 import { ModePicker } from "./features/mode-picker";
 import { buildSheetOnlyEntries, SheetOnlyGallery } from "./features/sheet-only-gallery";
@@ -3528,46 +3529,23 @@ export default function App() {
 
       <main className={`game-workspace ${tab === "scenes" || tab === "scene" ? "simple-workspace" : ""}`}>
         <aside className="panel left-panel utility-panel">
-          <section>
-            <div className="section-title"><Film size={17} /> Current Action</div>
-            <div className="asset-preview-card">
-              <div className="mini-preview large" style={checkerStyle}>
-                <div dangerouslySetInnerHTML={{ __html: spriteFrame(activeSprite, activeFrame) }} />
-              </div>
-              <strong>{activeSprite.characterName}</strong>
-              <span>{activeSprite.frames.length} frames / {frameW} x {frameH}</span>
-            </div>
-
-            <label>Action Name</label>
-            <input value={binding.actionName} onChange={event => setBinding(prev => ({ ...prev, actionName: event.target.value }))} />
-
-            <div className="two-col">
-              <div>
-                <label>Asset Role</label>
-                <select value={role} onChange={event => setRole(event.target.value as AssetRole)}>
-                  {Object.entries(roleLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </div>
-              <div>
-                <label>Trigger Type</label>
-                <select value={binding.triggerType} onChange={event => setBinding(prev => ({ ...prev, triggerType: event.target.value as ActionTriggerType }))}>
-                  {Object.entries(triggerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-                </select>
-              </div>
-            </div>
-
-            <label>Trigger Value</label>
-            <input value={binding.triggerValue} onChange={event => setBinding(prev => ({ ...prev, triggerValue: event.target.value }))} placeholder="Example: KeyD / click / player.walk" />
-
-            <label>Game State</label>
-            <input value={binding.gameState} onChange={event => setBinding(prev => ({ ...prev, gameState: event.target.value }))} />
-
-            <label>Tags</label>
-            <input value={tagsText} onChange={event => setTagsText(event.target.value)} />
-
-            <button className="primary-button full" onClick={saveAsset}><CheckCircle2 size={16} /> Save as Confirmed Asset</button>
-            <button className="ghost-button full" onClick={insertActiveSprite}><Plus size={16} /> Insert Current Action into Scene</button>
-          </section>
+          <CurrentActionPanel
+            activeFrame={activeFrame}
+            activeSprite={activeSprite}
+            binding={binding}
+            checkerStyle={checkerStyle}
+            frameHeight={frameH}
+            frameWidth={frameW}
+            role={role}
+            roleLabels={roleLabels}
+            tagsText={tagsText}
+            triggerLabels={triggerLabels}
+            onBindingChange={setBinding}
+            onInsertActiveSprite={insertActiveSprite}
+            onRoleChange={setRole}
+            onSaveAsset={saveAsset}
+            onTagsTextChange={setTagsText}
+          />
 
           <SpritesheetImporterPanel
             actionName={importActionName}
