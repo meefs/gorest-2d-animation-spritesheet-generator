@@ -5,3 +5,4 @@ export { SceneStageEnvironment } from "./SceneStageEnvironment";
 export { SceneStageOverlays } from "./SceneStageOverlays";
 export type { SceneInteractionPromptEntry } from "./SceneStageOverlays";
 export { SceneToolbar } from "./SceneToolbar";
+export { SceneVisualLayer } from "./SceneVisualLayer";

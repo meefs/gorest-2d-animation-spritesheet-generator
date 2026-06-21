@@ -10,7 +10,7 @@ import {
   spriteGridRows,
 } from "./domain/sprites/spriteUtils";
 import { CurrentActionPanel } from "./features/current-action";
-import { SceneBackgroundLayer, SceneGlobalControls, SceneLightingStrip, SceneStageEnvironment, SceneStageOverlays, SceneToolbar } from "./features/scene-editor";
+import { SceneBackgroundLayer, SceneGlobalControls, SceneLightingStrip, SceneStageEnvironment, SceneStageOverlays, SceneToolbar, SceneVisualLayer } from "./features/scene-editor";
 import {
   SceneInspectorAvatarSection,
   SceneInspectorHeader,
@@ -3319,7 +3319,7 @@ export default function App() {
   };
 
   const startInteractionZoneResize = (
-    event: PointerEvent<HTMLSpanElement>,
+    event: PointerEvent<HTMLElement>,
     layer: SceneLayer,
     asset: GameAsset,
     interaction: LayerInteractionSettings,
@@ -3720,138 +3720,42 @@ export default function App() {
                       const layerSprite = resolveAssetSprite(asset, layer);
                       if (!layerSprite) return null;
                       const interaction = layerInteractionSettings(layer, asset);
-                      const isInteractionTrigger = asset.tags.includes("interaction-trigger");
-                      const hotspotOpacity = isInteractionTrigger && interaction?.hotspotVisible === false && layer.id !== selectedLayerId
-                        ? 0.08
-                        : layer.opacity;
-                      const mouseClip = asset.animations?.find(clip => clip.binding?.triggerType === "mouse");
-                      const [assetW, assetH] = getFrameSize(layerSprite);
-                      const width = assetW * layer.scale * spriteStageScale;
-                      const height = assetH * layer.scale * spriteStageScale;
-                      const frame = spriteFrame(layerSprite, activeFrame);
-                      const shadow = layer.shadow || NEON_CONTACT_SHADOW;
-                      const shadowWidth = width * shadow.width;
-                      const shadowHeight = Math.max(8, height * shadow.height);
-                      const stageX = (layer.x - scene.cameraX * (layer.parallax ?? 1)) * stageScaleX;
-                      const zone = interaction ? interactionZoneBounds(layer, asset, interaction) : null;
                       return (
                         <Fragment key={layer.id}>
-                          {shadow.enabled && (
-                            <div
-                              className="scene-contact-shadow"
-                              style={{
-                                left: stageX + width / 2 - shadowWidth / 2 + shadow.offsetX * spriteStageScale,
-                                top: layer.y * stageScaleY - shadowHeight / 2 + shadow.offsetY * spriteStageScale,
-                                width: shadowWidth,
-                                height: shadowHeight,
-                                zIndex: layer.zIndex - 1,
-                                opacity: shadow.opacity * layer.opacity,
-                                background: shadow.color,
-                                filter: `blur(${shadow.blur * spriteStageScale}px)`,
-                              }}
-                            />
-                          )}
-                          <div
-                            className={`${layer.id === selectedLayerId ? "scene-sprite selected" : "scene-sprite"} ${isInteractionTrigger ? "interaction-hotspot-layer" : ""}`}
-                            style={{
-                              left: stageX,
-                              top: layer.y * stageScaleY - height,
-                              width,
-                              height,
-                              zIndex: layer.zIndex,
-                              opacity: hotspotOpacity,
-                            }}
-                            onPointerDown={event => {
-                              stagePointerDown(event, layer);
-                              setActiveSprite(layerSprite);
+                          <SceneVisualLayer
+                            activeFrame={activeFrame}
+                            asset={asset}
+                            contactShadow={NEON_CONTACT_SHADOW}
+                            interaction={interaction}
+                            isInteractionTrigger={asset.tags.includes("interaction-trigger")}
+                            layer={layer}
+                            renderFilter={sceneLayerRenderFilter(scene, layer, asset)}
+                            sceneCameraX={scene.cameraX}
+                            selectedInteractionZoneLayerId={selectedInteractionZoneLayerId}
+                            selectedLayerId={selectedLayerId}
+                            sprite={layerSprite}
+                            spriteStageScale={spriteStageScale}
+                            stageScaleX={stageScaleX}
+                            stageScaleY={stageScaleY}
+                            zone={interaction ? interactionZoneBounds(layer, asset, interaction) : null}
+                            onInteractionZoneClick={(targetLayer, sprite) => {
+                              setSelectedLayerId(targetLayer.id);
+                              setSelectedInteractionZoneLayerId(targetLayer.id);
+                              setActiveSprite(sprite);
                               setActiveFrame(0);
                             }}
-                            onClick={event => {
-                              event.stopPropagation();
-                              setSelectedLayerId(layer.id);
-                              setActiveSprite(layerSprite);
+                            onInteractionZoneDragStart={startInteractionZoneDrag}
+                            onInteractionZoneResizeStart={startInteractionZoneResize}
+                            onLayerContextMenu={openSceneLayerContextMenu}
+                            onLayerPointerDown={stagePointerDown}
+                            onLayerResizeStart={startLayerResize}
+                            onLayerSelect={(targetLayer, sprite) => {
+                              setSelectedLayerId(targetLayer.id);
+                              setActiveSprite(sprite);
                               setActiveFrame(0);
                             }}
-                            onContextMenu={event => {
-                              openSceneLayerContextMenu(event, layer);
-                            }}
-                          >
-                            <div
-                              className="sprite-art"
-                              style={{ filter: sceneLayerRenderFilter(scene, layer, asset) }}
-                              dangerouslySetInnerHTML={{ __html: frame }}
-                            />
-                          {layer.id === selectedLayerId && selectedInteractionZoneLayerId !== layer.id && (
-                            <>
-                              <span className="scene-selection-label">{layer.name}</span>
-                              <span
-                                className="resize-handle nw"
-                                title="Drag to resize"
-                                onPointerDown={event => startLayerResize(event, layer, assetW, assetH, "nw")}
-                              />
-                              <span
-                                className="resize-handle ne"
-                                title="Drag to resize"
-                                onPointerDown={event => startLayerResize(event, layer, assetW, assetH, "ne")}
-                              />
-                              <span
-                                className="resize-handle sw"
-                                title="Drag to resize"
-                                onPointerDown={event => startLayerResize(event, layer, assetW, assetH, "sw")}
-                              />
-                              <span
-                              className="resize-handle se"
-                              title="Drag to resize"
-                              onPointerDown={event => startLayerResize(event, layer, assetW, assetH, "se")}
-                            />
-                            </>
-                          )}
-                          </div>
-                          {zone && interaction?.enabled && (
-                            <div
-                              className={`interaction-zone-outline ${selectedInteractionZoneLayerId === layer.id ? "selected" : ""} ${selectedLayerId === layer.id ? "owner-selected" : ""}`}
-                              style={{
-                                left: (zone.left - scene.cameraX * (layer.parallax ?? 1)) * stageScaleX,
-                                top: zone.top * stageScaleY,
-                                width: zone.width * stageScaleX,
-                                height: zone.height * stageScaleY,
-                                zIndex: layer.zIndex + 5,
-                              }}
-                              onPointerDown={event => startInteractionZoneDrag(event, layer, interaction)}
-                              onClick={event => {
-                                event.stopPropagation();
-                                setSelectedLayerId(layer.id);
-                                setSelectedInteractionZoneLayerId(layer.id);
-                                setActiveSprite(layerSprite);
-                                setActiveFrame(0);
-                              }}
-                              onContextMenu={event => {
-                                openSceneLayerContextMenu(event, layer, "interaction-zone");
-                              }}
-                            >
-                              {selectedInteractionZoneLayerId === layer.id && (
-                                <>
-                                  <span>Interaction Zone</span>
-                                  <i
-                                    className="interaction-zone-handle nw"
-                                    onPointerDown={event => startInteractionZoneResize(event, layer, asset, interaction, "nw")}
-                                  />
-                                  <i
-                                    className="interaction-zone-handle ne"
-                                    onPointerDown={event => startInteractionZoneResize(event, layer, asset, interaction, "ne")}
-                                  />
-                                  <i
-                                    className="interaction-zone-handle sw"
-                                    onPointerDown={event => startInteractionZoneResize(event, layer, asset, interaction, "sw")}
-                                  />
-                                  <i
-                                    className="interaction-zone-handle se"
-                                    onPointerDown={event => startInteractionZoneResize(event, layer, asset, interaction, "se")}
-                                  />
-                                </>
-                              )}
-                            </div>
-                          )}
+                            onZoneContextMenu={(event, targetLayer) => openSceneLayerContextMenu(event, targetLayer, "interaction-zone")}
+                          />
                         </Fragment>
                       );
                     })}
