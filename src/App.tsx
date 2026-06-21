@@ -37,6 +37,7 @@ import {
 } from "./features/scene-layers";
 import { buildSceneFlowNodes, SceneFlowCanvas, type SceneFlowNode } from "./features/scene-flow";
 import { SceneContextMenu } from "./features/scene-context-menu";
+import { SceneSpritesheetsHeader } from "./features/scene-spritesheets";
 import { ModePicker } from "./features/mode-picker";
 import { buildSheetOnlyEntries, SheetOnlyGallery } from "./features/sheet-only-gallery";
 import { SpritesheetImporterPanel } from "./features/spritesheet-importer";
@@ -4549,18 +4550,12 @@ export default function App() {
 
             {tab === "spritesheets" && (
               <div className="spritesheet-library-page">
-                <div className="scene-library-header">
-                  <div>
-                    <p className="eyebrow">Scene Spritesheets</p>
-                    <h3>{sceneSpritesheetEntries.length} animation clips in this scene</h3>
-                  </div>
-                  <div className="scene-library-actions">
-                    <button type="button" className="ghost-button" onClick={() => setIsPlaying(value => !value)}>
-                      {isPlaying ? <Pause size={16} /> : <Play size={16} />} {isPlaying ? "Pause All" : "Play All"}
-                    </button>
-                    <button type="button" className="primary-button" onClick={saveScene}><Save size={16} /> Save Scene</button>
-                  </div>
-                </div>
+                <SceneSpritesheetsHeader
+                  clipCount={sceneSpritesheetEntries.length}
+                  isPlaying={isPlaying}
+                  onSaveScene={saveScene}
+                  onTogglePlay={() => setIsPlaying(value => !value)}
+                />
 
                 <div className="spritesheet-library-grid">
                   {sceneSpritesheetEntries.map(entry => {
