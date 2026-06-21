@@ -63,6 +63,13 @@ import {
   sceneHistoryKey,
 } from "./domain/scene/sceneHistory";
 import {
+  clearBackgroundLayerImage,
+  createSceneLayerInstance,
+  disableLayerInteraction,
+  replaceBackgroundLayerSettings,
+  type SceneObjectTarget,
+} from "./domain/scene/sceneLayerOperations";
+import {
   buildSpritesheetFrames,
   getFrameSize,
   spriteFrame,
@@ -125,12 +132,11 @@ type ScenePanelResizeState = {
   startLayerWidth: number;
   startInspectorWidth: number;
 };
-type SceneContextMenuTarget = "layer" | "interaction-zone";
 type SceneContextMenuState = {
   x: number;
   y: number;
   layerId: string;
-  target: SceneContextMenuTarget;
+  target: SceneObjectTarget;
 };
 type SceneLayerClipboard = {
   layer: SceneLayer;
@@ -1513,20 +1519,6 @@ export default function App() {
     }
   };
 
-  const buildLayerInstance = (sourceLayer: SceneLayer, label: "copy" | "paste", offsetIndex: number, zIndex: number): SceneLayer => {
-    const layer = cloneSceneLayer(sourceLayer);
-    return {
-      ...layer,
-      id: `layer_${label}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
-      name: `${layer.name} ${label}`,
-      visible: true,
-      locked: false,
-      x: Number((layer.x + offsetIndex * 36).toFixed(2)),
-      y: Number((layer.y + offsetIndex * 24).toFixed(2)),
-      zIndex,
-    };
-  };
-
   const copyLayerToSceneClipboard = (layerId = selectedLayerIdRef.current) => {
     const layer = sceneStateRef.current.layers.find(item => item.id === layerId);
     if (!layer || !isTransformableSceneLayer(layer)) {
@@ -1587,15 +1579,7 @@ export default function App() {
         setSceneContextMenu(null);
         return;
       }
-      const replacement: SceneLayer = {
-        ...sourceLayer,
-        id: targetBackground.id,
-        name: targetBackground.name,
-        type: "background",
-        locked: targetBackground.locked,
-        visible: true,
-        zIndex: targetBackground.zIndex,
-      };
+      const replacement = replaceBackgroundLayerSettings(targetBackground, sourceLayer);
       setScene(prev => ({
         ...prev,
         layers: prev.layers.map(layer => layer.id === targetBackground.id ? replacement : layer),
@@ -1609,7 +1593,7 @@ export default function App() {
 
     const offsetIndex = scenePasteCountRef.current + 1;
     const maxZ = Math.max(...sceneStateRef.current.layers.map(layer => layer.zIndex), sourceLayer.zIndex);
-    const pastedLayer = buildLayerInstance(sourceLayer, "paste", offsetIndex, maxZ + 1);
+    const pastedLayer = createSceneLayerInstance(sourceLayer, "paste", offsetIndex, maxZ + 1);
     scenePasteCountRef.current = offsetIndex;
     setScene(prev => ({ ...prev, layers: [...prev.layers, pastedLayer] }));
     setSelectedLayerId(pastedLayer.id);
@@ -1636,7 +1620,7 @@ export default function App() {
       return;
     }
     const maxZ = Math.max(...sceneStateRef.current.layers.map(item => item.zIndex), layer.zIndex);
-    const copy = buildLayerInstance(layer, "copy", 1, maxZ + 1);
+    const copy = createSceneLayerInstance(layer, "copy", 1, maxZ + 1);
     setScene(prev => ({ ...prev, layers: [...prev.layers, copy] }));
     setSelectedLayerId(copy.id);
     setSelectedInteractionZoneLayerId(null);
@@ -1649,7 +1633,7 @@ export default function App() {
   const openSceneLayerContextMenu = (
     event: MouseEvent<HTMLElement>,
     layer: SceneLayer,
-    target: SceneContextMenuTarget = "layer",
+    target: SceneObjectTarget = "layer",
   ) => {
     event.preventDefault();
     event.stopPropagation();
@@ -1664,7 +1648,7 @@ export default function App() {
     setSceneContextMenu({ x: event.clientX, y: event.clientY, layerId: layer.id, target });
   };
 
-  const deleteSceneObject = (layerId: string, target: SceneContextMenuTarget) => {
+  const deleteSceneObject = (layerId: string, target: SceneObjectTarget) => {
     const layer = sceneStateRef.current.layers.find(item => item.id === layerId);
     if (!layer) return;
     if (target !== "interaction-zone" && layer.type === "background") {
@@ -1673,16 +1657,7 @@ export default function App() {
         ...prev,
         background: "none",
         layers: prev.layers.map(item => item.id === layerId
-          ? {
-            ...item,
-            name: "Black Background",
-            visible: true,
-            imageUrl: undefined,
-            color: "#000000",
-            opacity: 1,
-            fit: "stretch",
-            position: "center center",
-          }
+          ? clearBackgroundLayerImage(item)
           : item),
       }));
       setSelectedLayerId(layerId);
@@ -1700,7 +1675,7 @@ export default function App() {
       setScene(prev => ({
         ...prev,
         layers: prev.layers.map(item => item.id === layerId
-          ? { ...item, interaction: item.interaction ? { ...item.interaction, enabled: false } : item.interaction }
+          ? disableLayerInteraction(item)
           : item),
       }));
       setSelectedInteractionZoneLayerId(null);
