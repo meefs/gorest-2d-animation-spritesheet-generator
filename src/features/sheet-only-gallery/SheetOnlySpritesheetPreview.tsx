@@ -1,7 +1,9 @@
-import { Pause, Play, RotateCcw } from "lucide-react";
+import { ChevronDown, Download, FileImage, Film, Pause, Play, RotateCcw, Video } from "lucide-react";
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { downloadUrl } from "../../app/downloads";
 import { getFrameSize, spriteFrameTotal, spriteGridColumns, spriteGridRows } from "../../domain/sprites/spriteUtils";
 import type { AnimationSprite } from "../../types";
+import { exportSpriteGif, exportSpriteVideo, type SpriteMediaExportSettings } from "./exportSpriteMedia";
 
 type SheetSize = {
   width: number;
@@ -55,6 +57,15 @@ function inferFrameSize(sheetSize: SheetSize, sprite?: AnimationSprite) {
   };
 }
 
+function safeFilename(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    || "spritesheet";
+}
+
 function previewBoxSize(frameWidth: number, frameHeight: number, viewport: ViewportSize) {
   const ratio = Math.max(0.01, frameWidth / Math.max(1, frameHeight));
   const isCompact = viewport.width <= 760;
@@ -87,6 +98,9 @@ export function SheetOnlySpritesheetPreview({
   const [frameHeight, setFrameHeight] = useState(initialFrameSize[1]);
   const [frameIndex, setFrameIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
+  const [isDownloadMenuOpen, setIsDownloadMenuOpen] = useState(false);
+  const [exportStatus, setExportStatus] = useState<"" | "gif" | "video">("");
+  const [downloadError, setDownloadError] = useState("");
   const [viewportSize, setViewportSize] = useState<ViewportSize>({ width: 0, height: 0 });
 
   useEffect(() => {
@@ -97,6 +111,8 @@ export function SheetOnlySpritesheetPreview({
     setFrameHeight(nextFrameHeight);
     setFrameIndex(0);
     setIsPlaying(true);
+    setIsDownloadMenuOpen(false);
+    setDownloadError("");
   }, [sheetDataUrl, sprite]);
 
   useEffect(() => {
@@ -159,6 +175,8 @@ export function SheetOnlySpritesheetPreview({
   const previewSize = viewportSize.width && viewportSize.height
     ? previewBoxSize(safeFrameWidth, safeFrameHeight, viewportSize)
     : null;
+  const downloadSourceUrl = sheetDataUrl || sprite?.rawSpritesheetPng || sprite?.spritesheetPng || "";
+  const downloadBaseName = safeFilename(title || sprite?.characterName || "spritesheet");
 
   useEffect(() => {
     setFrameIndex(value => Math.min(value, Math.max(0, frameTotal - 1)));
@@ -184,6 +202,41 @@ export function SheetOnlySpritesheetPreview({
     setFrameWidth(inferred.frameWidth);
     setFrameHeight(inferred.frameHeight);
     setFrameIndex(0);
+  };
+
+  const mediaExportSettings = (extension: string): SpriteMediaExportSettings => ({
+    columns,
+    filename: `${downloadBaseName}_${frameTotal}f.${extension}`,
+    fps: Math.max(1, Math.round(sprite?.fps || 8)),
+    frameCount: frameTotal,
+    frameHeight: safeFrameHeight,
+    frameWidth: safeFrameWidth,
+    sourceUrl: downloadSourceUrl,
+  });
+
+  const handleDownloadSheet = () => {
+    if (!downloadSourceUrl) return;
+    setDownloadError("");
+    setIsDownloadMenuOpen(false);
+    downloadUrl(downloadSourceUrl, `${downloadBaseName}_spritesheet.png`);
+  };
+
+  const handleExportMedia = (kind: "gif" | "video") => {
+    if (!downloadSourceUrl) return;
+    setDownloadError("");
+    setIsDownloadMenuOpen(false);
+    setExportStatus(kind);
+    try {
+      if (kind === "gif") {
+        exportSpriteGif(mediaExportSettings("gif"));
+      } else {
+        exportSpriteVideo(mediaExportSettings("webm"));
+      }
+    } catch (error) {
+      setDownloadError(error instanceof Error ? error.message : "Export failed.");
+    } finally {
+      window.setTimeout(() => setExportStatus(""), 1500);
+    }
   };
 
   return (
@@ -217,6 +270,35 @@ export function SheetOnlySpritesheetPreview({
           <div className="sheet-only-preview-copy">
             <strong>{title}</strong>
             <span>{activeFrameIndex + 1} / {frameTotal} frames / {columns} x {rows} grid</span>
+          </div>
+          <div className="sheet-only-download-control">
+            <button
+              type="button"
+              className="sheet-only-icon-button sheet-only-download-button"
+              aria-expanded={isDownloadMenuOpen}
+              aria-haspopup="menu"
+              title="Download"
+              disabled={!downloadSourceUrl || Boolean(exportStatus)}
+              onClick={() => setIsDownloadMenuOpen(value => !value)}
+            >
+              <Download size={15} />
+              {exportStatus ? "Exporting" : "Download"}
+              <ChevronDown size={13} />
+            </button>
+            {isDownloadMenuOpen && (
+              <div className="sheet-only-download-menu" role="menu">
+                <button type="button" role="menuitem" onClick={handleDownloadSheet}>
+                  <FileImage size={14} /> Spritesheet
+                </button>
+                <button type="button" role="menuitem" onClick={() => handleExportMedia("gif")}>
+                  <Film size={14} /> GIF
+                </button>
+                <button type="button" role="menuitem" onClick={() => handleExportMedia("video")}>
+                  <Video size={14} /> Video
+                </button>
+              </div>
+            )}
+            {downloadError && <span className="sheet-only-download-error">{downloadError}</span>}
           </div>
           <button type="button" className="sheet-only-icon-button" onClick={() => setIsPlaying(value => !value)}>
             {isPlaying ? <Pause size={15} /> : <Play size={15} />}

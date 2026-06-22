@@ -1,7 +1,9 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import os from "node:os";
 import * as net from "node:net";
+import { spawn } from "node:child_process";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
@@ -120,6 +122,164 @@ function writeGameLibrary(library: any) {
     JSON.stringify({ ...library, updatedTime: new Date().toISOString() }, null, 2),
     "utf-8"
   );
+}
+
+type SpritesheetMediaExportSettings = {
+  sourceUrl: string;
+  frameWidth: number;
+  frameHeight: number;
+  frameCount: number;
+  columns: number;
+  fps: number;
+  filename: string;
+};
+
+function parseBoundedInteger(value: unknown, fallback: number, min: number, max: number) {
+  const parsed = Number(value ?? fallback);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, Math.round(parsed)));
+}
+
+function sanitizeDownloadFilename(filename: unknown, extension: string) {
+  const fallback = `spritesheet_export.${extension}`;
+  const raw = typeof filename === "string" ? path.basename(filename) : fallback;
+  const normalized = raw
+    .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, "_")
+    .replace(/\s+/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+  const safe = normalized || fallback;
+  return safe.toLowerCase().endsWith(`.${extension}`)
+    ? safe
+    : `${safe.replace(/\.[^.]+$/, "")}.${extension}`;
+}
+
+function cleanupTempDir(tempDir: string | null) {
+  if (!tempDir) return;
+  fs.rm(tempDir, { recursive: true, force: true }, error => {
+    if (error) console.warn("Failed to clean spritesheet export temp dir:", error);
+  });
+}
+
+function runFfmpeg(args: string[]) {
+  const ffmpegPath = process.env.FFMPEG_PATH || "ffmpeg";
+  return new Promise<void>((resolve, reject) => {
+    const child = spawn(ffmpegPath, args, { windowsHide: true });
+    let stderr = "";
+    child.stderr.on("data", chunk => {
+      stderr += String(chunk);
+      if (stderr.length > 12000) stderr = stderr.slice(-12000);
+    });
+    child.once("error", error => {
+      reject(new Error(`Unable to start ffmpeg. Set FFMPEG_PATH if it is not on PATH. ${error.message}`));
+    });
+    child.once("close", code => {
+      if (code === 0) {
+        resolve();
+        return;
+      }
+      reject(new Error(stderr.trim() || `ffmpeg exited with code ${code}`));
+    });
+  });
+}
+
+function resolveGeneratedAssetPath(sourceUrl: string) {
+  const parsedPathname = /^https?:\/\//i.test(sourceUrl)
+    ? new URL(sourceUrl).pathname
+    : sourceUrl.split("?")[0].split("#")[0];
+  const decodedPathname = decodeURIComponent(parsedPathname);
+  if (!decodedPathname.startsWith("/generated/")) {
+    throw Object.assign(new Error("Only generated spritesheet files can be exported by URL."), { statusCode: 400 });
+  }
+
+  const relativePath = decodedPathname.slice("/generated/".length);
+  const resolvedRoot = path.resolve(GENERATED_DIR);
+  const resolvedFile = path.resolve(GENERATED_DIR, relativePath);
+  if (resolvedFile !== resolvedRoot && !resolvedFile.startsWith(`${resolvedRoot}${path.sep}`)) {
+    throw Object.assign(new Error("Invalid generated asset path."), { statusCode: 400 });
+  }
+  if (!fs.existsSync(resolvedFile) || !fs.statSync(resolvedFile).isFile()) {
+    throw Object.assign(new Error("Spritesheet source file was not found."), { statusCode: 404 });
+  }
+  return resolvedFile;
+}
+
+function writeDataUrlSource(sourceUrl: string, tempDir: string) {
+  const match = sourceUrl.match(/^data:image\/(png|jpeg|jpg|webp);base64,(.+)$/);
+  if (!match) {
+    throw Object.assign(new Error("Unsupported inline spritesheet image data."), { statusCode: 400 });
+  }
+  const extension = match[1] === "jpeg" ? "jpg" : match[1];
+  const filePath = path.join(tempDir, `source.${extension}`);
+  fs.writeFileSync(filePath, Buffer.from(match[2], "base64"));
+  return filePath;
+}
+
+function normalizeExportSettings(body: any): SpritesheetMediaExportSettings {
+  return {
+    columns: parseBoundedInteger(body?.columns, 1, 1, 64),
+    filename: typeof body?.filename === "string" ? body.filename : "spritesheet_export",
+    fps: parseBoundedInteger(body?.fps, 8, 1, 60),
+    frameCount: parseBoundedInteger(body?.frameCount, 1, 1, 256),
+    frameHeight: parseBoundedInteger(body?.frameHeight, 256, 1, 4096),
+    frameWidth: parseBoundedInteger(body?.frameWidth, 256, 1, 4096),
+    sourceUrl: typeof body?.sourceUrl === "string" ? body.sourceUrl : "",
+  };
+}
+
+async function extractSpritesheetFrames(sourcePath: string, tempDir: string, settings: SpritesheetMediaExportSettings) {
+  const outputFrameCount = settings.frameCount > 1 ? settings.frameCount : Math.max(1, settings.fps);
+  for (let outputIndex = 0; outputIndex < outputFrameCount; outputIndex += 1) {
+    const frameIndex = settings.frameCount > 1 ? outputIndex : 0;
+    const column = frameIndex % settings.columns;
+    const row = Math.floor(frameIndex / settings.columns);
+    const outputPath = path.join(tempDir, `frame_${String(outputIndex).padStart(4, "0")}.png`);
+    await runFfmpeg([
+      "-y",
+      "-i", sourcePath,
+      "-vf", `crop=${settings.frameWidth}:${settings.frameHeight}:${column * settings.frameWidth}:${row * settings.frameHeight}`,
+      "-frames:v", "1",
+      outputPath
+    ]);
+  }
+}
+
+async function buildProfessionalGif(tempDir: string, settings: SpritesheetMediaExportSettings, outputPath: string) {
+  const framePattern = path.join(tempDir, "frame_%04d.png");
+  const palettePath = path.join(tempDir, "palette.png");
+  await runFfmpeg([
+    "-y",
+    "-framerate", String(settings.fps),
+    "-i", framePattern,
+    "-vf", "palettegen=stats_mode=full:reserve_transparent=1",
+    palettePath
+  ]);
+  await runFfmpeg([
+    "-y",
+    "-framerate", String(settings.fps),
+    "-i", framePattern,
+    "-i", palettePath,
+    "-lavfi", "paletteuse=dither=sierra2_4a:alpha_threshold=128",
+    "-loop", "0",
+    outputPath
+  ]);
+}
+
+async function buildProfessionalVideo(tempDir: string, settings: SpritesheetMediaExportSettings, outputPath: string) {
+  const framePattern = path.join(tempDir, "frame_%04d.png");
+  await runFfmpeg([
+    "-y",
+    "-framerate", String(settings.fps),
+    "-i", framePattern,
+    "-vf", "format=rgba",
+    "-c:v", "libvpx-vp9",
+    "-pix_fmt", "yuva420p",
+    "-b:v", "0",
+    "-crf", "18",
+    "-auto-alt-ref", "0",
+    "-metadata:s:v:0", "alpha_mode=1",
+    outputPath
+  ]);
 }
 
 // Initialize Gemini API Client
@@ -509,6 +669,55 @@ app.get("/api/spritesheet/latest", (req, res) => {
     console.warn("Failed to load latest sprite manifest:", error);
   }
   res.json({ sprite: null });
+});
+
+async function handleSpritesheetMediaExport(payload: any, res: express.Response) {
+  let tempDir: string | null = null;
+
+  try {
+    const format = payload?.format;
+    if (format !== "gif" && format !== "video") {
+      return res.status(400).json({ error: "format must be gif or video" });
+    }
+
+    const settings = normalizeExportSettings(payload);
+    if (!settings.sourceUrl) {
+      return res.status(400).json({ error: "sourceUrl is required" });
+    }
+
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gorest-spritesheet-export-"));
+    const sourcePath = settings.sourceUrl.startsWith("data:")
+      ? writeDataUrlSource(settings.sourceUrl, tempDir)
+      : resolveGeneratedAssetPath(settings.sourceUrl);
+    const extension = format === "gif" ? "gif" : "webm";
+    const outputPath = path.join(tempDir, `export.${extension}`);
+
+    await extractSpritesheetFrames(sourcePath, tempDir, settings);
+    if (format === "gif") {
+      await buildProfessionalGif(tempDir, settings, outputPath);
+    } else {
+      await buildProfessionalVideo(tempDir, settings, outputPath);
+    }
+
+    res.download(outputPath, sanitizeDownloadFilename(settings.filename, extension), error => {
+      if (error) console.warn("Failed to send spritesheet media export:", error);
+      cleanupTempDir(tempDir);
+    });
+  } catch (error: any) {
+    cleanupTempDir(tempDir);
+    console.warn("Spritesheet media export failed:", error);
+    res.status(error?.statusCode || 500).json({
+      error: error?.message || "Failed to export spritesheet media"
+    });
+  }
+}
+
+app.get("/api/spritesheet/export-media", async (req, res) => {
+  await handleSpritesheetMediaExport(req.query, res);
+});
+
+app.post("/api/spritesheet/export-media", async (req, res) => {
+  await handleSpritesheetMediaExport(req.body, res);
 });
 
 app.get("/api/game-library", (req, res) => {
