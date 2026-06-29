@@ -1615,6 +1615,16 @@ export default function App() {
     setAppMode("home");
   };
 
+  const returnWithinGameWorkspace = () => {
+    setIsPlaying(false);
+    if (tab !== "scenes") {
+      setIsBackpackOpen(false);
+      setTab("scenes");
+      return;
+    }
+    returnToModePicker();
+  };
+
   useEffect(() => {
     if (appMode !== "sheet-only" || !sheetOnlyHasSelection || sheetOnlySelectionKind !== "sprite") return;
     if (activeSprite.spritesheetPng) {
@@ -2020,7 +2030,7 @@ export default function App() {
               viewportPreset={scene.viewportPreset}
               viewportPresets={VIEWPORT_PRESETS}
               viewportWidth={viewportWidth}
-              onBack={returnToModePicker}
+              onBack={returnWithinGameWorkspace}
               onOpenSheet={async () => {
                 setTab("sheet");
                 if (!activeSprite.spritesheetPng && !sheetDataUrl) await compileSheet();
